@@ -1,6 +1,7 @@
 'use script'
 
 var mongoose = require('mongoose');
+
 var Schema = mongoose.Schema;
 
 var userSchema = Schema({
