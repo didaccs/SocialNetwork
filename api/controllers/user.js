@@ -6,6 +6,7 @@ var jwt = require('../services/jwt');
 var mongoosePaginate = require('../lib/pagination');
 var fs = require('fs');
 var path = require('path');
+var Follow = require('../models/follow');
 
 // test method
 function home(req, res) {
@@ -106,9 +107,39 @@ function getUser(req, res) {
         if (err) return res.status(500).send({ message: 'Error en la petición del usuario' });
         if (!user) return res.status(404).send({ message: 'El usuario no existe' });
 
-        return res.status(200).send({ user });
-
+        
+        followThisUser(req.user.sub, userId).then((value)=>{
+            user.password = undefined;
+            return res.status(200).send({ 
+                user, 
+                following: value.following, 
+                followed: value.followed 
+            });
+        }).catch((err)=>{
+            console.log(err);
+        });
     });
+}
+
+async function followThisUser(identityUserId, userId) {
+    var following = await Follow.findOne({"user":identityUserId, "followed": userId})
+                .exec().then((following)=>{                
+                    return following;
+                }).catch((err)=>{
+                    console.log(err);
+                });
+
+    var followed = await Follow.findOne({"user":userId, "followed": identityUserId})
+                .exec().then((followed)=>{                
+                    return followed;
+                }).catch((err)=>{
+                    console.log(err);
+                });
+
+    return {
+        following: following, 
+        followed: followed
+    }
 }
 
 // Get user list with pagination
@@ -124,13 +155,86 @@ function getUsers(req, res) {
     User.find().sort('_id').paginate(page, itemsForPage, (err, users, total) => {
         if (err) return res.status(500).send({ message: 'Error en la petición de los usuarios' });
         if (!users) return res.status(404).send({ message: 'No se han encontrado usuarios' });
-
-        return res.status(200).send({
-            users,
-            total,
-            pages: Math.ceil(total / itemsForPage)
-        })
+        
+        followUserIds(identityUserId).then((value)=>{
+            return res.status(200).send({
+                users,
+                total,
+                pages: Math.ceil(total / itemsForPage),
+               users_following: value.following,
+               users_follow_me: value.followed
+            });
+        }).catch((err)=>{
+            console.log(err);
+        });        
     });
+}
+
+async function followUserIds(userId) {
+    var following = await Follow.find({"user":userId}).select({'_id':0, '__v':0, 'user':0})
+                .exec().then((follows)=>{ 
+                    var follows_clean = [];    
+                    follows.forEach(follow => {                        
+                        follows_clean.push(follow.followed);
+                    });
+                    return follows_clean;
+                }).catch((err)=>{
+                    console.log(err);
+                });
+
+    var followed = await Follow.find({"followed":userId}).select({'_id':0, '__v':0, 'followed':0})
+                .exec().then((follows)=>{ 
+                    var follows_clean = [];    
+                    if (follows.length > 1) {
+                        follows.forEach(follow => {                        
+                            follows_clean.push(follow.user);
+                        });    
+                    }
+                    else if (follows.length == 1) {
+                        follows_clean.push(follows[0].user);
+                    }
+                    
+                    return follows_clean;
+                }).catch((err)=>{
+                    console.log(err);
+                });
+
+    return {
+        following: following, 
+        followed: followed
+    }
+}
+
+function getCounters(req,res){
+    var userId = req.user.sub;
+    if(req.params.id){
+        userId = req.params.id;
+    }
+
+    getCountFollows(userId).then((value)=>{
+        return res.status(200).send(value);
+    }).catch((err)=>{
+        console.log(err);
+    });
+}
+
+async function getCountFollows(userId) {
+    var following = await Follow.count({"user":userId}).exec().then((count)=>{
+        return count;
+    }).catch((err)=>{
+        console.log(err);
+    });
+
+    var followed = await Follow.count({"followed":userId}).exec().then((count)=>{
+        return count;
+    }).catch((err)=>{
+        console.log(err);
+    });
+
+    return {
+        following: following, 
+        followed: followed
+    }
 }
 
 function updateUser(req, res) {
@@ -213,5 +317,6 @@ module.exports = {
     getUsers,
     updateUser,
     uploadImage,
-    getImageFile
+    getImageFile,
+    getCounters
 }
