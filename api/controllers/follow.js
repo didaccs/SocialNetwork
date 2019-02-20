@@ -49,12 +49,51 @@ function getFollowingUsers(req, res) {
         if (err) return res.status(500).send({ message: 'No se pueden obtener los seguidos' });
         if (!follows) return res.status(404).send({ message: 'No se está siguiendo a nadie' });
 
-        return res.status(200).send({
-            total: total,
-            pages: Math.ceil(total / itemsForPage),
-            follows
+        followUserIds(req.user.sub).then((value)=>{
+            return res.status(200).send({
+                total,
+                pages: Math.ceil(total / itemsForPage),
+                follows,
+                users_following: value.following,
+                users_follow_me: value.followed
+            });
         });
     });
+}
+
+async function followUserIds(userId) {
+    var following = await Follow.find({"user":userId}).select({'_id':0, '__v':0, 'user':0})
+                .exec().then((follows)=>{ 
+                    var follows_clean = [];    
+                    follows.forEach(follow => {                        
+                        follows_clean.push(follow.followed);
+                    });
+                    return follows_clean;
+                }).catch((err)=>{
+                    console.log(err);
+                });
+
+    var followed = await Follow.find({"followed":userId}).select({'_id':0, '__v':0, 'followed':0})
+                .exec().then((follows)=>{ 
+                    var follows_clean = [];    
+                    if (follows.length > 1) {
+                        follows.forEach(follow => {                        
+                            follows_clean.push(follow.user);
+                        });    
+                    }
+                    else if (follows.length == 1) {
+                        follows_clean.push(follows[0].user);
+                    }
+                    
+                    return follows_clean;
+                }).catch((err)=>{
+                    console.log(err);
+                });
+
+    return {
+        following: following, 
+        followed: followed
+    }
 }
 
 function getFollowedUsers(req,res) {
@@ -76,10 +115,14 @@ function getFollowedUsers(req,res) {
         if (err) return res.status(500).send({ message: 'No se pueden obtener los seguidores' });
         if (!follows) return res.status(404).send({ message: 'No te está siguiendo nadie' });
 
-        return res.status(200).send({
-            total: total,
-            pages: Math.ceil(total / itemsForPage),
-            follows
+        followUserIds(req.user.sub).then((value)=>{
+            return res.status(200).send({
+                total,
+                pages: Math.ceil(total / itemsForPage),
+                follows,
+                users_following: value.following,
+                users_follow_me: value.followed
+            });
         });
     });
 }

@@ -7,8 +7,8 @@ var mdAuth = require('../middleware/authenticated');
 
 api.get('/testmessage', mdAuth.ensureAuth, MessageController.testMessage);
 api.post('/message', mdAuth.ensureAuth, MessageController.saveMessage);
-api.get('/received-messages', mdAuth.ensureAuth, MessageController.getReceivedMessages);
-api.get('/emit-messages', mdAuth.ensureAuth, MessageController.getEmitMessages);
+api.get('/received-messages/:page?', mdAuth.ensureAuth, MessageController.getReceivedMessages);
+api.get('/emit-messages/:page?', mdAuth.ensureAuth, MessageController.getEmitMessages);
 api.get('/unviewed-messages', mdAuth.ensureAuth, MessageController.getUnviewedMessages);
 api.get('/set-viewed-messages', mdAuth.ensureAuth, MessageController.setViewedMessage);
 

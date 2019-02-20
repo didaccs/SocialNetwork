@@ -10,6 +10,7 @@ var api = express.Router();
 
 api.get('/test', mdAuth.ensureAuth, PublicationController.test);
 api.get('/publications/:page?', mdAuth.ensureAuth, PublicationController.getPublications);
+api.get('/publications-user/:user/:page?', mdAuth.ensureAuth, PublicationController.getPublicationsUser);
 api.post('/publication', mdAuth.ensureAuth, PublicationController.savePublication);
 api.get('/publication/:id', mdAuth.ensureAuth, PublicationController.getPublication);
 api.delete('/publication/:id', mdAuth.ensureAuth,PublicationController.deletePublication);

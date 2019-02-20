@@ -250,18 +250,31 @@ function updateUser(req, res) {
     var update = req.body;
 
     delete update.password;
+    
 
     if (userId != req.user.sub) {
         return res.status(500).send({ message: 'No tienes permisos para modificar este usuario.' });
     }
 
-    User.findByIdAndUpdate(userId, update, { new: true }, (err, userUpdate) => {
-        if (err) return res.status(500).send({ message: 'Error en la actualización del usuario' });
-        if (!userUpdate) return res.status(404).send({ message: 'No se han actualizado el usuario' });
+    User.find({ $or:[
+        {email: update.email.toLowerCase()},
+        {nick: update.nick.toLowerCase()}
+    ]}).exec((err, users)=>{        
+        var user_isset=false;        
 
-        return res.status(200).send({ user: userUpdate });
-    });
+        users.forEach((user)=>{
+            if (user && user._id!= userId) user_isset = true;
+        });
 
+        if (user_isset) return res.status(404).send({ message: 'Los datos ya estan en uso.' });
+
+        User.findByIdAndUpdate(userId, update, { new: true }, (err, userUpdate) => {
+            if (err) return res.status(500).send({ message: 'Error en la actualización del usuario' });
+            if (!userUpdate) return res.status(404).send({ message: 'No se han actualizado el usuario' });
+    
+            return res.status(200).send({ user: userUpdate });
+        });
+    })
 }
 
 function uploadImage(req, res) {

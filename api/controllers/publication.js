@@ -41,13 +41,15 @@ function getPublications(req,res) {
         page = req.params.page;
     }
 
-    var itemsForPage = 3;
+    var itemsForPage = 4;
 
     Follow.find({user:userId}).populate('followed').exec().then((follows)=>{
         var follows_clean = [];
         follows.forEach(follow => {                        
             follows_clean.push(follow.followed);
         });
+
+        follows_clean.push(userId);
 
         Publication.find({user: {"$in": follows_clean} }).sort('-created_at').populate('user').paginate(page, itemsForPage,(err,publications, total)=>{
             if (err) return res.status(500).send({ message: 'Error en la petición de las publicaciones' });
@@ -57,6 +59,7 @@ function getPublications(req,res) {
                 total_items:total,
                 pages: Math.ceil(total / itemsForPage),
                 page:page,
+                itemsPerPage: itemsForPage,
                 publications
             });
         });
@@ -64,7 +67,36 @@ function getPublications(req,res) {
     }).catch((err)=>{
         console.log(err);
     });
-    
+}
+
+function getPublicationsUser(req,res) {
+    var userId = req.user.sub;
+
+    var page = 1;
+    if (req.params.page) {
+        page = req.params.page;
+    }
+
+    var user = req.user.sub;
+    if (req.params.user) {
+        user = req.params.user;
+    }
+
+    var itemsForPage = 4;
+
+    Publication.find({user: user }).sort('-created_at').populate('user').paginate(page, itemsForPage,(err,publications, total)=>{
+        if (err) return res.status(500).send({ message: 'Error en la petición de las publicaciones' });
+        if (!publications) return res.status(404).send({ message: 'No hay publicaciones' });
+
+        return res.status(200).send({
+            total_items:total,
+            pages: Math.ceil(total / itemsForPage),
+            page:page,
+            itemsPerPage: itemsForPage,
+            publications
+        });
+    });
+
 }
 
 function getPublication(req,res) {
@@ -155,5 +187,6 @@ module.exports={
     getPublication,
     deletePublication,
     uploadImage,
-    getImageFile
+    getImageFile,
+    getPublicationsUser
 }
